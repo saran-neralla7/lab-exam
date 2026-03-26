@@ -10,9 +10,9 @@ export default defineConfig({
       injectRegister: 'auto',
       includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'mask-icon.svg'],
       manifest: {
-        name: 'College Exam Automation',
-        short_name: 'Exam Auto',
-        description: 'College Exam Document Automation System',
+        name: 'GVPCDPGC(A)',
+        short_name: 'GVPCDPGC(A)',
+        description: 'GVPCDPGC(A) Exam Document Automation System',
         theme_color: '#ffffff',
         icons: [
           {

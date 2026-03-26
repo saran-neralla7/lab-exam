@@ -21,10 +21,11 @@ const getMyStudents = async (req, res) => {
     const filter = { department: req.user.department };
     if (req.query.sectionId) filter.section = req.query.sectionId;
     if (req.query.semester) filter.semester = req.query.semester;
+    if (req.query.year) filter.year = req.query.year;
 
     const students = await Student.find(filter)
       .populate('section', 'name')
-      .sort({ semester: 1, rollNumber: 1 });
+      .sort({ year: 1, semester: 1, rollNumber: 1 });
     res.json(students);
   } catch (error) { res.status(500).json({ message: error.message }); }
 };

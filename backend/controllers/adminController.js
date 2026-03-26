@@ -14,7 +14,8 @@ const getDepartments = async (req, res) => {
 
 const createDepartment = async (req, res) => {
   try {
-    const dept = await Department.create({ name: req.body.name });
+    const { name, shortName } = req.body;
+    const dept = await Department.create({ name, shortName: shortName || undefined });
     res.status(201).json(dept);
   } catch (error) { res.status(400).json({ message: 'Department may already exist' }); }
 };
@@ -78,15 +79,15 @@ const getStudents = async (req, res) => {
     const students = await Student.find({})
       .populate('department', 'name')
       .populate('section', 'name')
-      .sort({ semester: 1, rollNumber: 1 });
+      .sort({ year: 1, semester: 1, rollNumber: 1 });
     res.json(students);
   } catch (error) { res.status(500).json({ message: error.message }); }
 };
 
 const createStudent = async (req, res) => {
   try {
-    const { rollNumber, name, departmentId, sectionId, semester } = req.body;
-    const student = await Student.create({ rollNumber, name, department: departmentId, section: sectionId, semester });
+    const { rollNumber, name, departmentId, sectionId, year, semester } = req.body;
+    const student = await Student.create({ rollNumber, name, department: departmentId, section: sectionId, year, semester });
     res.status(201).json(student);
   } catch (error) { res.status(400).json({ message: error.message }); }
 };
@@ -96,6 +97,98 @@ const deleteStudent = async (req, res) => {
     await Student.findByIdAndDelete(req.params.id);
     res.json({ message: 'Student removed' });
   } catch (error) { res.status(400).json({ message: error.message }); }
+};
+
+const getStudentTemplate = async (req, res) => {
+  try {
+    const csv = 'rollNumber,name,department,section,year,semester\n21B01A0501,John Doe,CSE,A,2,1\n';
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', 'attachment; filename=student_template.csv');
+    res.send(csv);
+  } catch (error) { res.status(500).json({ message: error.message }); }
+};
+
+const bulkImportStudents = async (req, res) => {
+  try {
+    const { csvData } = req.body;
+    if (!csvData) return res.status(400).json({ message: 'No CSV data provided' });
+
+    const lines = csvData.split('\n').filter(l => l.trim());
+    if (lines.length < 2) return res.status(400).json({ message: 'CSV must have a header and at least one data row' });
+
+    const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
+    const requiredHeaders = ['rollnumber', 'name', 'department', 'year', 'semester'];
+    for (const rh of requiredHeaders) {
+      if (!headers.includes(rh)) return res.status(400).json({ message: `Missing required column: ${rh}` });
+    }
+
+    const departments = await Department.find({});
+    const sections = await Section.find({});
+    const deptMap = {};
+    departments.forEach(d => {
+      deptMap[d.name.toLowerCase()] = d._id;
+      if (d.shortName) deptMap[d.shortName.toLowerCase()] = d._id;
+    });
+    const secMap = {};
+    sections.forEach(s => { secMap[`${s.department.toString()}_${s.name.toLowerCase()}`] = s._id; });
+
+    let created = 0, skipped = 0, errors = [];
+
+    for (let i = 1; i < lines.length; i++) {
+      const values = lines[i].split(',').map(v => v.trim());
+      const row = {};
+      headers.forEach((h, idx) => { row[h] = values[idx] || ''; });
+
+      const deptId = deptMap[row.department?.toLowerCase()];
+      if (!deptId) { errors.push(`Row ${i + 1}: Department '${row.department}' not found`); skipped++; continue; }
+
+      let secId = null;
+      if (row.section) {
+        secId = secMap[`${deptId.toString()}_${row.section.toLowerCase()}`];
+        if (!secId) { errors.push(`Row ${i + 1}: Section '${row.section}' not found in department '${row.department}'`); skipped++; continue; }
+      }
+
+      const yearNum = parseInt(row.year);
+      const semNum = parseInt(row.semester);
+      if (!yearNum || yearNum < 1 || yearNum > 4) { errors.push(`Row ${i + 1}: Invalid year '${row.year}'`); skipped++; continue; }
+      if (!semNum || semNum < 1 || semNum > 2) { errors.push(`Row ${i + 1}: Invalid semester '${row.semester}'`); skipped++; continue; }
+
+      try {
+        await Student.create({
+          rollNumber: row.rollnumber,
+          name: row.name,
+          department: deptId,
+          section: secId,
+          year: yearNum,
+          semester: semNum
+        });
+        created++;
+      } catch (err) {
+        if (err.code === 11000) { errors.push(`Row ${i + 1}: Duplicate roll number '${row.rollnumber}'`); skipped++; }
+        else { errors.push(`Row ${i + 1}: ${err.message}`); skipped++; }
+      }
+    }
+
+    res.json({ created, skipped, errors });
+  } catch (error) { res.status(500).json({ message: error.message }); }
+};
+
+const exportStudents = async (req, res) => {
+  try {
+    const students = await Student.find({})
+      .populate('department', 'name')
+      .populate('section', 'name')
+      .sort({ year: 1, semester: 1, rollNumber: 1 });
+
+    let csv = 'rollNumber,name,department,section,year,semester\n';
+    students.forEach(s => {
+      csv += `${s.rollNumber},${s.name},${s.department?.name || ''},${s.section?.name || ''},${s.year},${s.semester}\n`;
+    });
+
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', 'attachment; filename=students_export.csv');
+    res.send(csv);
+  } catch (error) { res.status(500).json({ message: error.message }); }
 };
 
 // --- LABS ---
@@ -126,5 +219,6 @@ module.exports = {
   getFaculty, createFaculty, deleteFaculty,
   getSections, createSection, deleteSection,
   getStudents, createStudent, deleteStudent,
+  getStudentTemplate, bulkImportStudents, exportStudents,
   getLabs, createLab, deleteLab
 };

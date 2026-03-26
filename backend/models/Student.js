@@ -6,7 +6,8 @@ const studentSchema = mongoose.Schema(
     name: { type: String, required: true },
     department: { type: mongoose.Schema.Types.ObjectId, ref: 'Department', required: true },
     section: { type: mongoose.Schema.Types.ObjectId, ref: 'Section' },
-    semester: { type: Number, required: true, min: 1, max: 8 },
+    year: { type: Number, required: true, min: 1, max: 4 },
+    semester: { type: Number, required: true, min: 1, max: 2 },
   },
   { timestamps: true }
 );

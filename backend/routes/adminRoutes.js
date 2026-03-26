@@ -5,6 +5,7 @@ const {
   getFaculty, createFaculty, deleteFaculty,
   getSections, createSection, deleteSection,
   getStudents, createStudent, deleteStudent,
+  getStudentTemplate, bulkImportStudents, exportStudents,
   getLabs, createLab, deleteLab
 } = require('../controllers/adminController');
 const { protect, admin } = require('../middleware/authMiddleware');
@@ -25,6 +26,9 @@ router.route('/sections/:id').delete(deleteSection);
 
 // Students
 router.route('/students').get(getStudents).post(createStudent);
+router.get('/students/template', getStudentTemplate);
+router.post('/students/import', bulkImportStudents);
+router.get('/students/export', exportStudents);
 router.route('/students/:id').delete(deleteStudent);
 
 // Labs

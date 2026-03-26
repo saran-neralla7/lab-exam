@@ -30,7 +30,7 @@ const AdminDashboard = () => {
     <div className="flex h-screen bg-background">
       <div className="w-64 bg-surface border-r border-slate-200 flex flex-col shrink-0">
         <div className="p-6 border-b border-slate-200">
-          <h1 className="text-xl font-bold text-primary-600">Exam Auto</h1>
+          <h1 className="text-xl font-bold text-primary-600">GVPCDPGC(A)</h1>
           <p className="text-xs text-slate-500 mt-1">Admin Portal</p>
         </div>
         <nav className="flex-1 overflow-y-auto p-4 space-y-1">
